@@ -120,7 +120,7 @@ export default function AdminPage() {
       sessionStorage.setItem('admin_authenticated', 'true');
       setAuthError(null);
     } else {
-      setAuthError('รหัสผ่านไม่ถูกต้อง (รหัสผ่านคือ nwsp1234)');
+      setAuthError('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
     }
   };
 

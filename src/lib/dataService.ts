@@ -249,7 +249,7 @@ export async function verifyStudentId(
     return {
       valid: false,
       alreadyVoted: false,
-      errorMsg: `ไม่พบรหัสนักเรียน ${cleanId} ในระบบ (ทดสอบรหัส: 11111, 22222, 33333, 12345)`,
+      errorMsg: `ไม่พบรหัสนักเรียน ${cleanId} ในระบบ (กรุณาติดต่อแอดมินหรือครูผู้ดูแล)`,
     };
   }
 
