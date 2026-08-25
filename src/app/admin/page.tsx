@@ -220,35 +220,56 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      complete: async (results) => {
-        const studentList: { studentId: string; name?: string }[] = [];
-        results.data.forEach((row: any) => {
-          let id = '';
-          let name = '';
-          if (Array.isArray(row)) {
-            id = String(row[0] || '').trim();
-            name = String(row[1] || '').trim();
-          } else if (typeof row === 'object' && row !== null) {
-            id = String(row.studentId || row.id || row.รหัสนักเรียน || '').trim();
-            name = String(row.name || row.ชื่อ || '').trim();
-          }
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const buffer = evt.target?.result as ArrayBuffer;
+      if (!buffer) return;
 
-          if (/^\d{5}$/.test(id)) {
-            studentList.push({ studentId: id, name });
-          }
-        });
-
-        if (studentList.length > 0) {
-          const res = await importStudentIds(studentList);
-          setLastImportTime(res.timestamp);
-          setStudentNotice(`✅ นำเข้ารหัสนักเรียนสำเร็จทั้งหมด ${res.count} รายการ (อัปเดตเมื่อ ${res.timestamp})`);
+      let decodedText = '';
+      try {
+        // Try decoding with TIS-620 (Thai Windows Excel CSV encoding)
+        const tisDecoder = new TextDecoder('tis-620');
+        const candidateText = tisDecoder.decode(buffer);
+        if (/[\u0E00-\u0E7F]/.test(candidateText)) {
+          decodedText = candidateText;
         } else {
-          alert('ไม่พบรหัสนักเรียน 5 หลักในไฟล์ CSV');
+          decodedText = new TextDecoder('utf-8').decode(buffer);
         }
-      },
-      error: () => alert('อ่านไฟล์ CSV ล้มเหลว'),
-    });
+      } catch (err) {
+        decodedText = new TextDecoder('utf-8').decode(buffer);
+      }
+
+      Papa.parse(decodedText, {
+        complete: async (results) => {
+          const studentList: { studentId: string; name?: string }[] = [];
+          results.data.forEach((row: any) => {
+            let id = '';
+            let name = '';
+            if (Array.isArray(row)) {
+              id = String(row[0] || '').trim();
+              name = String(row[1] || '').trim();
+            } else if (typeof row === 'object' && row !== null) {
+              id = String(row.studentId || row.id || row.รหัสนักเรียน || '').trim();
+              name = String(row.name || row.ชื่อ || row['ชื่อ-นามสกุล'] || '').trim();
+            }
+
+            if (/^\d{5}$/.test(id)) {
+              studentList.push({ studentId: id, name });
+            }
+          });
+
+          if (studentList.length > 0) {
+            const res = await importStudentIds(studentList);
+            setLastImportTime(res.timestamp);
+            setStudentNotice(`✅ นำเข้ารหัสนักเรียนสำเร็จทั้งหมด ${res.count} รายการ (อัปเดตเมื่อ ${res.timestamp})`);
+          } else {
+            alert('ไม่พบรหัสนักเรียน 5 หลักในไฟล์ CSV');
+          }
+        },
+        error: () => alert('อ่านไฟล์ CSV ล้มเหลว'),
+      });
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleGetAdminLocation = () => {
