@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Prompt } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
-import { Recycle, Award, Lock, Sparkles, Flame } from 'lucide-react';
+import { Recycle, Award, Lock, Sparkles, Flame, Heart } from 'lucide-react';
 
 const promptFont = Prompt({
   subsets: ['thai', 'latin'],
@@ -65,8 +65,16 @@ export default function RootLayout({
             {/* Navigation Actions */}
             <nav className="flex items-center gap-2 sm:gap-3">
               <Link
+                href="/"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 transition-all shadow-sm"
+              >
+                <Heart className="w-4 h-4 text-rose-500 fill-current" />
+                <span>โหวต Miss Popular</span>
+              </Link>
+
+              <Link
                 href="/leaderboard"
-                className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 hover:border-amber-400 transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 hover:border-amber-400 transition-all shadow-sm"
               >
                 <Award className="w-4 h-4 text-amber-500" />
                 <span>ผลโหวต</span>
@@ -74,7 +82,7 @@ export default function RootLayout({
 
               <Link
                 href="/admin"
-                className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs sm:text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-md active:scale-95"
               >
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 <span>แอดมิน</span>
