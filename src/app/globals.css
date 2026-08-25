@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: var(--font-prompt), sans-serif;
+  }
+}
+
+/* Glassmorphism Light Cards */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(209, 250, 229, 0.8);
+}
+
+.glass-card-light {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-card-light:hover {
+  background: #ffffff;
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+/* Glow Effects */
+.glow-emerald {
+  box-shadow: 0 10px 30px -5px rgba(16, 185, 129, 0.25);
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
+}
+
+/* On-screen Keypad Button Effects for Light Mode */
+.keypad-btn {
+  @apply relative flex items-center justify-center h-14 bg-slate-100 hover:bg-emerald-100/70 active:bg-emerald-200 text-slate-900 font-extrabold text-xl rounded-2xl border border-slate-200 hover:border-emerald-300 transition-all active:scale-95 shadow-sm select-none;
+}
