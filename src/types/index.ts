@@ -23,7 +23,8 @@ export interface Student {
 export interface SystemSettings {
   targetLat: number;
   targetLng: number;
-  radiusMeters: number; // default 40
+  radiusMeters: number; // default 100
+  requireGpsCheck?: boolean; // default true/false switch in Admin
   votingEndTime: string; // ISO string
   isVotingOpen: boolean;
   eventTitle?: string;

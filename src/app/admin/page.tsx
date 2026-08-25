@@ -77,9 +77,10 @@ export default function AdminPage() {
   const [lastImportTime, setLastImportTime] = useState<string>('');
 
   // Settings Form State
-  const [settingsLat, setSettingsLat] = useState<number>(13.7563);
-  const [settingsLng, setSettingsLng] = useState<number>(100.5018);
-  const [settingsRadius, setSettingsRadius] = useState<number>(40);
+  const [settingsLat, setSettingsLat] = useState<number>(17.1648);
+  const [settingsLng, setSettingsLng] = useState<number>(102.5752);
+  const [settingsRadius, setSettingsRadius] = useState<number>(100);
+  const [settingsRequireGps, setSettingsRequireGps] = useState<boolean>(true);
   const [settingsEndTime, setSettingsEndTime] = useState<string>('');
   const [settingsIsOpen, setSettingsIsOpen] = useState<boolean>(true);
   const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
@@ -98,9 +99,10 @@ export default function AdminPage() {
     const unsubSettings = subscribeSettings((data) => {
       setSettings(data);
       if (data) {
-        setSettingsLat(data.targetLat);
-        setSettingsLng(data.targetLng);
-        setSettingsRadius(data.radiusMeters || 40);
+        setSettingsLat(data.targetLat || 17.1648);
+        setSettingsLng(data.targetLng || 102.5752);
+        setSettingsRadius(data.radiusMeters || 100);
+        setSettingsRequireGps(data.requireGpsCheck ?? true);
         setSettingsIsOpen(data.isVotingOpen);
         try {
           const d = new Date(data.votingEndTime);
@@ -323,6 +325,7 @@ export default function AdminPage() {
       targetLat: settingsLat,
       targetLng: settingsLng,
       radiusMeters: settingsRadius,
+      requireGpsCheck: settingsRequireGps,
       isVotingOpen: settingsIsOpen,
       votingEndTime: settingsEndTime ? new Date(settingsEndTime).toISOString() : new Date().toISOString(),
     });
@@ -848,6 +851,24 @@ export default function AdminPage() {
 
             {/* GPS Location Config */}
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-xs font-extrabold text-slate-900 block">เปิด/ปิด การตรวจเช็คพิกัดสถานที่จัดงาน (GPS Check)</span>
+                  <span className="text-[11px] font-light text-slate-500">
+                    หากปิด: นักเรียนจะสามารถกดเลือกโหวตได้ทันที (ใช้ระบบยืนยันรหัส 5 หลัก + ล็อก 1 เครื่อง/1 สิทธิ์)
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={settingsRequireGps}
+                    onChange={(e) => setSettingsRequireGps(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:translate-x-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+                </label>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-600" />

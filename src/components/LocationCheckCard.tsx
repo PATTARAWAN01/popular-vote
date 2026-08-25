@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Compass } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Compass, ShieldCheck } from 'lucide-react';
 import { calculateDistanceMeters, formatDistance } from '@/lib/geo';
 
 interface LocationCheckCardProps {
   targetLat: number;
   targetLng: number;
   radiusMeters: number;
+  requireGpsCheck?: boolean;
   onLocationVerified?: (verified: boolean, lat: number, lng: number, distance: number) => void;
 }
 
@@ -15,6 +16,7 @@ export function LocationCheckCard({
   targetLat,
   targetLng,
   radiusMeters = 100,
+  requireGpsCheck = true,
   onLocationVerified,
 }: LocationCheckCardProps) {
   const [loading, setLoading] = useState<boolean>(false);
@@ -22,12 +24,22 @@ export function LocationCheckCard({
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [currentLat, setCurrentLat] = useState<number | null>(null);
-  const [currentLng, setCurrentLng] = useState<number | null>(null);
 
   const checkLocation = () => {
+    // If GPS check is disabled by Admin, pass automatically!
+    if (requireGpsCheck === false) {
+      setIsWithinRadius(true);
+      setDistance(0);
+      setLoading(false);
+      if (onLocationVerified) {
+        onLocationVerified(true, 0, 0, 0);
+      }
+      return;
+    }
+
     if (!navigator.geolocation) {
       setErrorMsg('อุปกรณ์นี้ไม่รองรับระบบระบุตำแหน่ง GPS');
+      if (onLocationVerified) onLocationVerified(false, 0, 0, 999999);
       return;
     }
 
@@ -38,17 +50,16 @@ export function LocationCheckCard({
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
+        const acc = pos.coords.accuracy || 0;
 
-        setCurrentLat(lat);
-        setCurrentLng(lng);
         setAccuracy(acc);
 
         const dist = calculateDistanceMeters(lat, lng, targetLat, targetLng);
         setDistance(dist);
 
-        // Account for GPS accuracy tolerance buffer
-        const effectiveRadius = radiusMeters + Math.min(acc || 0, 30);
+        // Smart GPS accuracy tolerance:
+        // If phone GPS accuracy circle overlaps with event target radius, mark as VERIFIED!
+        const effectiveRadius = radiusMeters + Math.min(acc, 500);
         const pass = dist <= effectiveRadius;
         setIsWithinRadius(pass);
         setLoading(false);
@@ -61,10 +72,10 @@ export function LocationCheckCard({
         setLoading(false);
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setErrorMsg('กรุณากด "อนุญาต" (Allow) ให้เบราว์เซอร์เข้าถึง GPS ตำแหน่งของคุณ');
+            setErrorMsg('กรุณากด "อนุญาต" (Allow) ให้เบราว์เซอร์เข้าถึง GPS หรือติดต่อแอดมินปิดการเช็ค GPS');
             break;
           case err.POSITION_UNAVAILABLE:
-            setErrorMsg('ไม่สามารถดึงตำแหน่ง GPS ได้ กรุณาเปิด GPS/Location ในมือถือ');
+            setErrorMsg('ไม่สามารถดึงตำแหน่ง GPS ได้ในขณะนี้');
             break;
           case err.TIMEOUT:
             setErrorMsg('หมดเวลาค้นหาตำแหน่ง GPS กรุณากดปุ่มลองใหม่อีกครั้ง');
@@ -86,7 +97,29 @@ export function LocationCheckCard({
 
   useEffect(() => {
     checkLocation();
-  }, [targetLat, targetLng, radiusMeters]);
+  }, [targetLat, targetLng, radiusMeters, requireGpsCheck]);
+
+  // If GPS check is disabled by Admin
+  if (requireGpsCheck === false) {
+    return (
+      <div className="w-full bg-emerald-50/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-emerald-200 shadow-sm flex items-center gap-3">
+        <div className="p-3 bg-emerald-600 text-white rounded-2xl flex-shrink-0 shadow-md">
+          <ShieldCheck className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="font-extrabold text-emerald-950 text-sm sm:text-base flex items-center gap-2">
+            เช็คอินผ่านสิทธิ์นักเรียน 5 หลัก
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300">
+              ระบบล็อก 1 เครื่อง/1 สิทธิ์
+            </span>
+          </h3>
+          <p className="text-xs text-emerald-800 font-medium mt-0.5">
+            แอดมินเปิดโหมดพิเศษ: สามารถกดเลือกผู้สมัครและลงคะแนนโหวตได้ทันที!
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200">
@@ -117,7 +150,7 @@ export function LocationCheckCard({
             {loading ? (
               <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-light">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                กำลังจับพิกัดความแม่นยำสูง GPS มือถือ...
+                กำลังคำนวณระยะห่าง GPS...
               </p>
             ) : errorMsg ? (
               <p className="text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium">

@@ -80,7 +80,8 @@ export default function HomePage() {
         <LocationCheckCard
           targetLat={settings.targetLat}
           targetLng={settings.targetLng}
-          radiusMeters={settings.radiusMeters || 40}
+          radiusMeters={settings.radiusMeters || 100}
+          requireGpsCheck={settings.requireGpsCheck ?? true}
           onLocationVerified={(verified, lat, lng, dist) => {
             setIsLocationVerified(verified);
             setUserLat(lat);

@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   targetLat: 17.1648, // Nong Wua So Phittayakhom School, Udon Thani
   targetLng: 102.5752,
   radiusMeters: 100, // Default 100m for indoor/outdoor mobile GPS accuracy
+  requireGpsCheck: true,
   votingEndTime: new Date(Date.now() + 86400000 * 2).toISOString(),
   isVotingOpen: true,
   eventTitle: 'Popular Vote ชุดรีไซเคิล โรงเรียนหนองวัวซอพิทยาคม 2569',
