@@ -32,25 +32,33 @@ const STORAGE_KEY_CANDIDATES = 'popular_vote_candidates';
 const STORAGE_KEY_STUDENTS = 'popular_vote_students';
 const STORAGE_KEY_SETTINGS = 'popular_vote_settings';
 const STORAGE_KEY_VOTES = 'popular_vote_votes';
+const STORAGE_KEY_INITIALIZED = 'popular_vote_initialized';
 
 // --- Local Storage Helpers ---
 function getLocalCandidates(): Candidate[] {
-  if (typeof window === 'undefined') return INITIAL_CANDIDATES;
+  if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(STORAGE_KEY_CANDIDATES);
-  if (!stored) {
+  const isInit = localStorage.getItem(STORAGE_KEY_INITIALIZED);
+
+  if (!stored && !isInit) {
     localStorage.setItem(STORAGE_KEY_CANDIDATES, JSON.stringify(INITIAL_CANDIDATES));
+    localStorage.setItem(STORAGE_KEY_INITIALIZED, 'true');
     return INITIAL_CANDIDATES;
   }
+
+  if (!stored) return [];
+
   try {
     return JSON.parse(stored);
   } catch {
-    return INITIAL_CANDIDATES;
+    return [];
   }
 }
 
 function saveLocalCandidates(candidates: Candidate[]) {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY_CANDIDATES, JSON.stringify(candidates));
+    localStorage.setItem(STORAGE_KEY_INITIALIZED, 'true');
     window.dispatchEvent(new Event('local-candidates-update'));
   }
 }
@@ -118,15 +126,8 @@ export function subscribeCandidates(callback: (candidates: Candidate[]) => void)
         snapshot.forEach((doc) => {
           list.push({ id: doc.id, ...doc.data() } as Candidate);
         });
-        if (list.length === 0) {
-          INITIAL_CANDIDATES.forEach((c) => {
-            setDoc(doc(db, 'candidates', c.id), c);
-          });
-          callback(INITIAL_CANDIDATES);
-        } else {
-          list.sort((a, b) => a.candidateNumber.localeCompare(b.candidateNumber));
-          callback(list);
-        }
+        list.sort((a, b) => a.candidateNumber.localeCompare(b.candidateNumber));
+        callback(list);
       },
       (error) => {
         console.warn('Firestore error, falling back to local:', error);
@@ -420,9 +421,6 @@ export async function updateSystemSettings(settings: Partial<SystemSettings>) {
   saveLocalSettings(updated);
 }
 
-/**
- * Image Auto-compression helper: downscales images to max 800px & ~50KB payload
- */
 export function compressImageFile(file: File, maxWidth = 800, quality = 0.8): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -459,9 +457,6 @@ export function compressImageFile(file: File, maxWidth = 800, quality = 0.8): Pr
   });
 }
 
-/**
- * Auto-compress and return lightweight Data URL (~50KB) directly so no credit card or Firebase Storage bucket is required!
- */
 export async function uploadCandidateImage(file: File): Promise<string> {
   return await compressImageFile(file, 800, 0.8);
 }
