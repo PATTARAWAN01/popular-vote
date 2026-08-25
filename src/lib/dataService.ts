@@ -33,6 +33,7 @@ const STORAGE_KEY_STUDENTS = 'popular_vote_students';
 const STORAGE_KEY_SETTINGS = 'popular_vote_settings';
 const STORAGE_KEY_VOTES = 'popular_vote_votes';
 const STORAGE_KEY_INITIALIZED = 'popular_vote_initialized';
+const STORAGE_KEY_LAST_IMPORT = 'popular_vote_last_import_time';
 
 // --- Local Storage Helpers ---
 function getLocalCandidates(): Candidate[] {
@@ -63,7 +64,7 @@ function saveLocalCandidates(candidates: Candidate[]) {
   }
 }
 
-function getLocalStudents(): Record<string, Student> {
+export function getLocalStudents(): Record<string, Student> {
   if (typeof window === 'undefined') return INITIAL_STUDENTS;
   const stored = localStorage.getItem(STORAGE_KEY_STUDENTS);
   if (!stored) {
@@ -168,6 +169,33 @@ export function subscribeSettings(callback: (settings: SystemSettings) => void) 
   }
 }
 
+export function subscribeStudents(callback: (students: Student[]) => void) {
+  if (isFirebaseConfigured()) {
+    const studentsRef = collection(db, 'students');
+    return onSnapshot(
+      studentsRef,
+      (snapshot) => {
+        const list: Student[] = [];
+        snapshot.forEach((doc) => {
+          list.push({ studentId: doc.id, ...doc.data() } as Student);
+        });
+        list.sort((a, b) => a.studentId.localeCompare(b.studentId));
+        callback(list);
+      },
+      (error) => {
+        console.warn('Firestore students error, fallback local:', error);
+        const map = getLocalStudents();
+        callback(Object.values(map));
+      }
+    );
+  } else {
+    const handler = () => callback(Object.values(getLocalStudents()));
+    window.addEventListener('local-students-update', handler);
+    callback(Object.values(getLocalStudents()));
+    return () => window.removeEventListener('local-students-update', handler);
+  }
+}
+
 export function subscribeVoteLogs(callback: (votes: VoteLog[]) => void) {
   if (isFirebaseConfigured()) {
     const votesQuery = query(collection(db, 'votes'), orderBy('timestamp', 'desc'), limit(200));
@@ -223,7 +251,7 @@ export async function verifyStudentId(
         return {
           valid: false,
           alreadyVoted: false,
-          errorMsg: `ไม่พบรหัสนักเรียน ${cleanId} ในระบบ (กรุณาติดต่อแอดมิน)`,
+          errorMsg: `ไม่พบรหัสนักเรียน ${cleanId} ในระบบ (กรุณาติดต่อแอดมินหรือครูผู้ดูแล)`,
         };
       }
 
@@ -461,8 +489,16 @@ export async function uploadCandidateImage(file: File): Promise<string> {
   return await compressImageFile(file, 800, 0.8);
 }
 
-export async function importStudentIds(studentList: { studentId: string; name?: string }[]) {
+export async function importStudentIds(studentList: { studentId: string; name?: string }[]): Promise<{ count: number; timestamp: string }> {
   const studentsMap: Record<string, Student> = {};
+  const importTime = new Date().toLocaleString('th-TH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
   
   studentList.forEach((s) => {
     const cleanId = s.studentId.trim();
@@ -476,12 +512,17 @@ export async function importStudentIds(studentList: { studentId: string; name?: 
     }
   });
 
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY_LAST_IMPORT, importTime);
+  }
+
   if (isFirebaseConfigured()) {
     try {
       for (const [id, student] of Object.entries(studentsMap)) {
         await setDoc(doc(db, 'students', id), student, { merge: true });
       }
-      return Object.keys(studentsMap).length;
+      await setDoc(doc(db, 'settings', 'config'), { lastImportTime: importTime }, { merge: true });
+      return { count: Object.keys(studentsMap).length, timestamp: importTime };
     } catch (e) {
       console.error('Error importing students to Firestore:', e);
     }
@@ -490,7 +531,7 @@ export async function importStudentIds(studentList: { studentId: string; name?: 
   const current = getLocalStudents();
   const merged = { ...current, ...studentsMap };
   saveLocalStudents(merged);
-  return Object.keys(studentsMap).length;
+  return { count: Object.keys(studentsMap).length, timestamp: importTime };
 }
 
 export async function resetAllVotes() {

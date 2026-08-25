@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Candidate, Category, SystemSettings, VoteLog } from '@/types';
+import { Candidate, Category, Student, SystemSettings, VoteLog } from '@/types';
 import {
   subscribeCandidates,
   subscribeSettings,
+  subscribeStudents,
   subscribeVoteLogs,
   saveCandidate,
   deleteCandidate,
@@ -36,6 +37,11 @@ import {
   Globe,
   Smartphone,
   Activity,
+  Search,
+  Check,
+  X,
+  UserCheck,
+  Calendar,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -47,6 +53,7 @@ export default function AdminPage() {
   // System Data
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [studentsList, setStudentsList] = useState<Student[]>([]);
   const [voteLogs, setVoteLogs] = useState<VoteLog[]>([]);
 
   // Active Admin Sub-tab
@@ -62,10 +69,12 @@ export default function AdminPage() {
   const [formPhotoUrl, setFormPhotoUrl] = useState<string>('');
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
 
-  // Student CSV State
+  // Student Search & Import State
+  const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
   const [singleStudentId, setSingleStudentId] = useState<string>('');
   const [singleStudentName, setSingleStudentName] = useState<string>('');
   const [studentNotice, setStudentNotice] = useState<string | null>(null);
+  const [lastImportTime, setLastImportTime] = useState<string>('');
 
   // Settings Form State
   const [settingsLat, setSettingsLat] = useState<number>(13.7563);
@@ -104,11 +113,18 @@ export default function AdminPage() {
         }
       }
     });
+    const unsubStudents = subscribeStudents((data) => setStudentsList(data));
     const unsubLogs = subscribeVoteLogs((data) => setVoteLogs(data));
+
+    if (typeof window !== 'undefined') {
+      const storedLastTime = localStorage.getItem('popular_vote_last_import_time');
+      if (storedLastTime) setLastImportTime(storedLastTime);
+    }
 
     return () => {
       unsubCandidates();
       unsubSettings();
+      unsubStudents();
       unsubLogs();
     };
   }, [isAuthenticated]);
@@ -193,8 +209,9 @@ export default function AdminPage() {
       return;
     }
 
-    await importStudentIds([{ studentId: cleanId, name: singleStudentName }]);
-    setStudentNotice(`เพิ่มรหัสนักเรียน ${cleanId} สำเร็จ`);
+    const res = await importStudentIds([{ studentId: cleanId, name: singleStudentName }]);
+    setLastImportTime(res.timestamp);
+    setStudentNotice(`✅ เพิ่มรหัสนักเรียน ${cleanId} สำเร็จ (บันทึกเมื่อ ${res.timestamp})`);
     setSingleStudentId('');
     setSingleStudentName('');
   };
@@ -223,8 +240,9 @@ export default function AdminPage() {
         });
 
         if (studentList.length > 0) {
-          const addedCount = await importStudentIds(studentList);
-          setStudentNotice(`นำเข้ารหัสนักเรียนสำเร็จ ${addedCount} รายการ`);
+          const res = await importStudentIds(studentList);
+          setLastImportTime(res.timestamp);
+          setStudentNotice(`✅ นำเข้ารหัสนักเรียนสำเร็จทั้งหมด ${res.count} รายการ (อัปเดตเมื่อ ${res.timestamp})`);
         } else {
           alert('ไม่พบรหัสนักเรียน 5 หลักในไฟล์ CSV');
         }
@@ -266,6 +284,16 @@ export default function AdminPage() {
       alert('รีเซ็ตคะแนนโหวตทั้งหมดเรียบร้อยแล้ว');
     }
   };
+
+  // Filtered Students List for Search
+  const filteredStudents = studentsList.filter((s) => {
+    const q = studentSearchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return s.studentId.includes(q) || (s.name && s.name.toLowerCase().includes(q));
+  });
+
+  const juniorVotedCount = studentsList.filter((s) => s.hasVotedJunior).length;
+  const seniorVotedCount = studentsList.filter((s) => s.hasVotedSenior).length;
 
   // --- 1. Login Screen ---
   if (!isAuthenticated) {
@@ -380,7 +408,7 @@ export default function AdminPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          ฐานข้อมูลนักเรียน
+          ฐานข้อมูลนักเรียน ({studentsList.length})
         </button>
 
         <button
@@ -471,71 +499,179 @@ export default function AdminPage() {
 
       {/* --- TAB CONTENT: Student Database --- */}
       {activeTab === 'students' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-600" />
-              จัดการฐานข้อมูลรหัสนักเรียน 5 หลัก
-            </h2>
-            <p className="text-xs text-slate-500 font-light mt-1">
-              ใช้สำหรับรีเช็คว่ารหัสนักเรียนที่นำมาโหวตเป็นนักเรียนในโรงเรียนจริงหรือไม่ และป้องกันการโหวตซ้ำ
-            </p>
+        <div className="space-y-6">
+          {/* Summary Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 font-bold">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-500 block">นักเรียนทั้งหมดในระบบ</span>
+                <span className="text-2xl font-black text-slate-900">{studentsList.length.toLocaleString()} คน</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center flex-shrink-0 font-bold">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-500 block">อัปเดต CSV ล่าสุดเมื่อ</span>
+                <span className="text-xs font-bold text-slate-800">{lastImportTime || 'ยังไม่มีข้อมูลการอัปโหลด'}</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center flex-shrink-0 font-bold">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-500 block">จำนวนผู้ใช้สิทธิ์โหวตแล้ว</span>
+                <span className="text-xs font-bold text-slate-900 block">
+                  ม.ต้น: <strong className="text-emerald-700">{juniorVotedCount}</strong> | ม.ปลาย: <strong className="text-teal-700">{seniorVotedCount}</strong>
+                </span>
+              </div>
+            </div>
           </div>
 
-          {studentNotice && (
-            <div className="p-3 bg-emerald-50 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2 border border-emerald-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              {studentNotice}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* CSV Import */}
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-              <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                นำเข้าด้วยไฟล์ CSV (Bulk Import)
-              </div>
-              <p className="text-xs text-slate-500 font-light">
-                อัปโหลดไฟล์ `.csv` ที่มีคอลัมน์รหัสนักเรียน 5 หลัก (เช่น Column 1: 12345, Column 2: ชื่อนักเรียน)
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-600" />
+                จัดการฐานข้อมูลรหัสนักเรียน 5 หลัก
+              </h2>
+              <p className="text-xs text-slate-500 font-light mt-1">
+                ใช้สำหรับรีเช็คว่ารหัสนักเรียนที่นำมาโหวตเป็นนักเรียนในโรงเรียนจริงหรือไม่ และป้องกันการโหวตซ้ำ
               </p>
-              <label className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-bold text-slate-800 cursor-pointer transition-colors shadow-sm">
-                <Upload className="w-4 h-4 text-emerald-600" />
-                <span>เลือกไฟล์ CSV เพื่อนำเข้า</span>
-                <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
-              </label>
             </div>
 
-            {/* Individual Addition */}
-            <form onSubmit={handleAddSingleStudent} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-              <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
-                <Plus className="w-4 h-4 text-emerald-600" />
-                เพิ่มรหัสนักเรียนรายบุคคล
+            {studentNotice && (
+              <div className="p-4 bg-emerald-50 text-emerald-900 rounded-2xl text-xs font-extrabold flex items-center gap-2 border border-emerald-300 animate-fade-in shadow-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                <span>{studentNotice}</span>
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  maxLength={5}
-                  value={singleStudentId}
-                  onChange={(e) => setSingleStudentId(e.target.value.replace(/\D/g, ''))}
-                  placeholder="รหัส 5 หลัก"
-                  className="w-1/3 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
-                />
-                <input
-                  type="text"
-                  value={singleStudentName}
-                  onChange={(e) => setSingleStudentName(e.target.value)}
-                  placeholder="ชื่อนักเรียน (ถ้ามี)"
-                  className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900"
-                />
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* CSV Import */}
+              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  นำเข้าด้วยไฟล์ CSV (Bulk Import)
+                </div>
+                <p className="text-xs text-slate-500 font-light">
+                  อัปโหลดไฟล์ `.csv` ที่มีคอลัมน์รหัสนักเรียน 5 หลัก (เช่น Column 1: 12345, Column 2: ชื่อนักเรียน)
+                </p>
+                <label className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl text-xs font-bold text-slate-800 cursor-pointer transition-colors shadow-sm">
+                  <Upload className="w-4 h-4 text-emerald-600" />
+                  <span>เลือกไฟล์ CSV เพื่อนำเข้า</span>
+                  <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
+                </label>
               </div>
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold"
-              >
-                + เพิ่มรหัสนักเรียน
-              </button>
-            </form>
+
+              {/* Individual Addition */}
+              <form onSubmit={handleAddSingleStudent} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 font-bold text-sm text-slate-900">
+                  <Plus className="w-4 h-4 text-emerald-600" />
+                  เพิ่มรหัสนักเรียนรายบุคคล
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={singleStudentId}
+                    onChange={(e) => setSingleStudentId(e.target.value.replace(/\D/g, ''))}
+                    placeholder="รหัส 5 หลัก"
+                    className="w-1/3 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                  />
+                  <input
+                    type="text"
+                    value={singleStudentName}
+                    onChange={(e) => setSingleStudentName(e.target.value)}
+                    placeholder="ชื่อนักเรียน (ถ้ามี)"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold"
+                >
+                  + เพิ่มรหัสนักเรียน
+                </button>
+              </form>
+            </div>
+
+            {/* Student Search & Real-time Table */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h3 className="font-extrabold text-sm text-slate-900">
+                  ตารางรายชื่อนักเรียนในระบบ ({filteredStudents.length} รายการ)
+                </h3>
+
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    value={studentSearchQuery}
+                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    placeholder="ค้นหารหัส 5 หลัก หรือชื่อ..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+
+              <div className="max-h-[350px] overflow-y-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">รหัสนักเรียน</th>
+                      <th className="p-3">ชื่อ - นามสกุล</th>
+                      <th className="p-3 text-center">สิทธิ์โหวต ม.ต้น</th>
+                      <th className="p-3 text-center">สิทธิ์โหวต ม.ปลาย</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {filteredStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-slate-400 text-xs font-medium">
+                          ไม่พบข้อมูลนักเรียนตามเงื่อนไขที่ค้นหา
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStudents.map((student) => (
+                        <tr key={student.studentId} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3 font-mono font-black text-slate-900">{student.studentId}</td>
+                          <td className="p-3 font-medium text-slate-800">{student.name || '-'}</td>
+                          <td className="p-3 text-center">
+                            {student.hasVotedJunior ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                <Check className="w-3 h-3 text-emerald-600" /> โหวตแล้ว
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
+                                <X className="w-3 h-3 text-slate-400" /> ยังไม่โหวต
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            {student.hasVotedSenior ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800">
+                                <Check className="w-3 h-3 text-teal-600" /> โหวตแล้ว
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
+                                <X className="w-3 h-3 text-slate-400" /> ยังไม่โหวต
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}
