@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, CheckCircle2, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Compass } from 'lucide-react';
 import { calculateDistanceMeters, formatDistance } from '@/lib/geo';
 
 interface LocationCheckCardProps {
@@ -14,13 +14,16 @@ interface LocationCheckCardProps {
 export function LocationCheckCard({
   targetLat,
   targetLng,
-  radiusMeters = 40,
+  radiusMeters = 100,
   onLocationVerified,
 }: LocationCheckCardProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState<boolean | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [currentLat, setCurrentLat] = useState<number | null>(null);
+  const [currentLng, setCurrentLng] = useState<number | null>(null);
 
   const checkLocation = () => {
     if (!navigator.geolocation) {
@@ -35,11 +38,18 @@ export function LocationCheckCard({
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
+
+        setCurrentLat(lat);
+        setCurrentLng(lng);
+        setAccuracy(acc);
 
         const dist = calculateDistanceMeters(lat, lng, targetLat, targetLng);
         setDistance(dist);
 
-        const pass = dist <= radiusMeters;
+        // Account for GPS accuracy tolerance buffer
+        const effectiveRadius = radiusMeters + Math.min(acc || 0, 30);
+        const pass = dist <= effectiveRadius;
         setIsWithinRadius(pass);
         setLoading(false);
 
@@ -51,13 +61,13 @@ export function LocationCheckCard({
         setLoading(false);
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setErrorMsg('กรุณาอนุญาตการเข้าถึงตำแหน่ง GPS บนเบราว์เซอร์เพื่อเช็คอิน');
+            setErrorMsg('กรุณากด "อนุญาต" (Allow) ให้เบราว์เซอร์เข้าถึง GPS ตำแหน่งของคุณ');
             break;
           case err.POSITION_UNAVAILABLE:
-            setErrorMsg('ไม่สามารถดึงข้อมูลตำแหน่ง GPS ได้ในขณะนี้');
+            setErrorMsg('ไม่สามารถดึงตำแหน่ง GPS ได้ กรุณาเปิด GPS/Location ในมือถือ');
             break;
           case err.TIMEOUT:
-            setErrorMsg('หมดเวลาค้นหาตำแหน่ง GPS กรุณากดลองใหม่อีกครั้ง');
+            setErrorMsg('หมดเวลาค้นหาตำแหน่ง GPS กรุณากดปุ่มลองใหม่อีกครั้ง');
             break;
           default:
             setErrorMsg('เกิดข้อผิดพลาดในการดึงตำแหน่ง GPS');
@@ -68,7 +78,7 @@ export function LocationCheckCard({
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0,
       }
     );
@@ -107,7 +117,7 @@ export function LocationCheckCard({
             {loading ? (
               <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-light">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                กำลังคำนวณระยะห่าง GPS...
+                กำลังจับพิกัดความแม่นยำสูง GPS มือถือ...
               </p>
             ) : errorMsg ? (
               <p className="text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium">
@@ -115,33 +125,42 @@ export function LocationCheckCard({
                 {errorMsg}
               </p>
             ) : distance !== null ? (
-              <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="text-xs font-light text-slate-600">
-                  ระยะห่าง: <strong className="text-slate-900 font-bold">{formatDistance(distance)}</strong>
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                    isWithinRadius
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : 'bg-rose-100 text-rose-800 border border-rose-300'
-                  }`}
-                >
-                  {isWithinRadius ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      อยู่ในรัศมี (ผ่านเงื่อนไข)
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                      อยู่นอกระยะ 40m
-                    </>
-                  )}
-                </span>
+              <div className="space-y-1 mt-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-light text-slate-600">
+                    ระยะห่างจริง: <strong className="text-slate-900 font-bold">{formatDistance(distance)}</strong>
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                      isWithinRadius
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    {isWithinRadius ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        อยู่ในรัศมี (ผ่านเงื่อนไข)
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                        อยู่นอกระยะ {radiusMeters}m
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {accuracy !== null && (
+                  <p className="text-[11px] text-slate-400 font-light flex items-center gap-1">
+                    <Compass className="w-3 h-3 text-slate-400" />
+                    ความแม่นยำเสาสัญญาณมือถือ: ±{Math.round(accuracy)}m
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-xs text-slate-500 mt-1 font-light">
-                กดปุ่มเช็คอินเพื่อระบุตำแหน่งของคุณ
+                กดปุ่มอัปเดตตำแหน่งเพื่อระบุพิกัด GPS
               </p>
             )}
           </div>
@@ -153,7 +172,7 @@ export function LocationCheckCard({
           className="self-stretch sm:self-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition-all border border-transparent active:scale-95 disabled:opacity-50"
         >
           <Navigation className={`w-3.5 h-3.5 text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'กำลังตรวจสอบ...' : 'อัปเดตตำแหน่ง GPS'}
+          {loading ? 'กำลังจับพิกัด...' : 'อัปเดตพิกัด GPS ใหม่'}
         </button>
       </div>
     </div>

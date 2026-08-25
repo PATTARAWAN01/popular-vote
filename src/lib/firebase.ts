@@ -16,9 +16,9 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 export const DEFAULT_SETTINGS: SystemSettings = {
-  targetLat: 13.7563, // Default location (Can be updated in admin)
-  targetLng: 100.5018,
-  radiusMeters: 40,
+  targetLat: 17.1648, // Nong Wua So Phittayakhom School, Udon Thani
+  targetLng: 102.5752,
+  radiusMeters: 100, // Default 100m for indoor/outdoor mobile GPS accuracy
   votingEndTime: new Date(Date.now() + 86400000 * 2).toISOString(),
   isVotingOpen: true,
   eventTitle: 'Popular Vote ชุดรีไซเคิล โรงเรียนหนองวัวซอพิทยาคม 2569',

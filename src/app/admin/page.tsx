@@ -277,14 +277,44 @@ export default function AdminPage() {
       alert('เบราว์เซอร์ไม่รองรับ GPS');
       return;
     }
+    setSettingsNotice('กำลังจับพิกัดความแม่นยำสูงของแอดมิน...');
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setSettingsLat(pos.coords.latitude);
-        setSettingsLng(pos.coords.longitude);
-        setSettingsNotice('ดึงพิกัดปัจจุบันของแอดมินสำเร็จ!');
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setSettingsLat(lat);
+        setSettingsLng(lng);
+        await updateSystemSettings({
+          targetLat: lat,
+          targetLng: lng,
+          radiusMeters: settingsRadius,
+          isVotingOpen: settingsIsOpen,
+          votingEndTime: settingsEndTime ? new Date(settingsEndTime).toISOString() : new Date().toISOString(),
+        });
+        setSettingsNotice(`📍 จับและบันทึกพิกัดสถานที่จัดงานสำเร็จ! (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)})`);
       },
-      (err) => alert('ไม่สามารถดึงตำแหน่ง GPS ได้: ' + err.message)
+      (err) => alert('ไม่สามารถดึงตำแหน่ง GPS ได้: ' + err.message),
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
     );
+  };
+
+  const handleSetSchoolPresetLocation = async () => {
+    const schoolLat = 17.1648;
+    const schoolLng = 102.5752;
+    setSettingsLat(schoolLat);
+    setSettingsLng(schoolLng);
+    await updateSystemSettings({
+      targetLat: schoolLat,
+      targetLng: schoolLng,
+      radiusMeters: settingsRadius,
+      isVotingOpen: settingsIsOpen,
+      votingEndTime: settingsEndTime ? new Date(settingsEndTime).toISOString() : new Date().toISOString(),
+    });
+    setSettingsNotice(`📍 ตั้งค่าพิกัดโรงเรียนหนองวัวซอพิทยาคม สำเร็จ! (Lat: ${schoolLat}, Lng: ${schoolLng})`);
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -818,18 +848,27 @@ export default function AdminPage() {
 
             {/* GPS Location Config */}
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-600" />
                   พิกัดเป้าหมาย (Latitude, Longitude) & รัศมี
                 </span>
-                <button
-                  type="button"
-                  onClick={handleGetAdminLocation}
-                  className="px-3 py-1.5 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl text-xs font-bold border border-emerald-300 transition-colors"
-                >
-                  📍 ใช้ตำแหน่งปัจจุบันของ Admin
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSetSchoolPresetLocation}
+                    className="px-3 py-1.5 bg-teal-100 text-teal-800 hover:bg-teal-200 rounded-xl text-xs font-bold border border-teal-300 transition-colors"
+                  >
+                    🏫 พิกัดรร.หนองวัวซอ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGetAdminLocation}
+                    className="px-3 py-1.5 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl text-xs font-bold border border-emerald-300 transition-colors"
+                  >
+                    📍 ใช้ตำแหน่งมือถือ Admin
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
