@@ -5,6 +5,8 @@
 const STORAGE_KEY_DEVICE_TOKEN = 'popular_vote_device_token';
 const STORAGE_KEY_DEVICE_VOTED = 'popular_vote_device_voted_categories';
 
+let cachedPublicIp: string | null = null;
+
 /**
  * Get or generate a persistent UUID for this physical browser/device
  */
@@ -53,28 +55,26 @@ export function markDeviceVotedForCategory(category: 'junior' | 'senior'): void 
 }
 
 /**
- * Fetch voter public IP address via lightweight ipify service with fallback
+ * Fetch voter public IP address with fast 300ms race timeout to avoid slowing down vote submission
  */
 export async function getVoterPublicIp(): Promise<string> {
-  try {
-    const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.ip) return data.ip;
-    }
-  } catch (e) {
-    console.warn('Could not fetch public IP via ipify, attempting fallback:', e);
-  }
+  if (cachedPublicIp) return cachedPublicIp;
 
-  try {
-    const res = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.ip) return data.ip;
-    }
-  } catch (e) {
-    console.warn('Fallback IP fetch failed:', e);
-  }
+  const fetchPromise = (async () => {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ip) {
+          cachedPublicIp = data.ip;
+          return data.ip;
+        }
+      }
+    } catch {}
+    return 'Client IP';
+  })();
 
-  return 'Local / Private IP';
+  const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve('Client IP'), 300));
+
+  return Promise.race([fetchPromise, timeoutPromise]);
 }

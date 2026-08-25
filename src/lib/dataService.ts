@@ -315,25 +315,27 @@ export async function submitVote(
   if (isFirebaseConfigured()) {
     try {
       const candidateRef = doc(db, 'candidates', candidateId);
-      await updateDoc(candidateRef, { voteCount: increment(1) });
-
       const studentRef = doc(db, 'students', cleanId);
       const updateField = category === 'junior' ? { hasVotedJunior: true } : { hasVotedSenior: true };
-      await updateDoc(studentRef, updateField);
 
-      await addDoc(collection(db, 'votes'), {
-        studentId: cleanId,
-        candidateId,
-        candidateNumber: targetCandidate?.candidateNumber || '',
-        candidateName: targetCandidate?.name || '',
-        category,
-        voterLat,
-        voterLng,
-        distanceMeters,
-        deviceToken,
-        voterIp,
-        timestamp: serverTimestamp(),
-      });
+      // Execute all 3 Firestore write operations concurrently for maximum speed!
+      await Promise.all([
+        updateDoc(candidateRef, { voteCount: increment(1) }),
+        updateDoc(studentRef, updateField),
+        addDoc(collection(db, 'votes'), {
+          studentId: cleanId,
+          candidateId,
+          candidateNumber: targetCandidate?.candidateNumber || '',
+          candidateName: targetCandidate?.name || '',
+          category,
+          voterLat,
+          voterLng,
+          distanceMeters,
+          deviceToken,
+          voterIp,
+          timestamp: serverTimestamp(),
+        }),
+      ]);
 
       return { success: true, message: 'ลงคะแนนโหวตสำเร็จ! ขอบคุณสำหรับการโหวต' };
     } catch (err: any) {
