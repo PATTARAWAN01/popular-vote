@@ -43,12 +43,49 @@ export function CountdownTimer({ endTimeIso, isVotingOpen, onExpire }: Countdown
 
   const active = isVotingOpen && !timeLeft.isExpired;
 
+  // Format closed date time
+  const formattedClosedTime = (() => {
+    try {
+      const d = new Date(endTimeIso);
+      return d.toLocaleString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return endTimeIso;
+    }
+  })();
+
+  // If closed, show clean banner with closed timestamp and NO countdown boxes
+  if (!active) {
+    return (
+      <div className="w-full bg-rose-50/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 border border-rose-200 shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-rose-600 text-white rounded-2xl flex-shrink-0 shadow-md">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-rose-950 text-sm sm:text-base flex items-center gap-2">
+              🔴 ปิดรับโหวตเรียบร้อยแล้ว
+            </h3>
+            <p className="text-xs text-rose-800 font-bold mt-0.5">
+              ปิดระบบลงคะแนนเมื่อ: <span className="underline font-mono">{formattedClosedTime} น.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-white/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-100">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Left Status */}
         <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${active ? 'bg-emerald-100 text-emerald-700 animate-pulse' : 'bg-rose-100 text-rose-700'}`}>
+          <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-700 animate-pulse">
             <Clock className="w-6 h-6" />
           </div>
           <div>
@@ -56,24 +93,13 @@ export function CountdownTimer({ endTimeIso, isVotingOpen, onExpire }: Countdown
               <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">
                 สถานะเวลาโหวต
               </span>
-              <span className={`inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-0.5 rounded-full ${
-                active ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-              }`}>
-                {active ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    กำลังเปิดรับโหวต
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                    ปิดรับโหวตแล้ว
-                  </>
-                )}
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                กำลังเปิดรับโหวต
               </span>
             </div>
             <p className="text-xs text-slate-500 font-light mt-0.5">
-              {active ? 'เวลาที่เหลือก่อนปิดการโหวต' : 'หมดเวลาลงคะแนนแล้ว'}
+              เวลาที่เหลือก่อนปิดการโหวต
             </p>
           </div>
         </div>

@@ -128,11 +128,10 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Total Votes Counter */}
+        {/* Percentage Display Indicator */}
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-white px-4 py-2.5 rounded-2xl border border-slate-200 shadow-sm">
           <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-          <span>ยอดโหวตระดับ {activeCategory === 'junior' ? 'ม.ต้น' : 'ม.ปลาย'}:</span>
-          <strong className="text-emerald-700 text-sm">{totalCategoryVotes.toLocaleString()} คะแนน</strong>
+          <span>แสดงสัดส่วนคะแนนเป็นเปอร์เซ็นต์ (%)</span>
         </div>
       </div>
 
@@ -153,7 +152,7 @@ export default function HomePage() {
             <CandidateCard
               key={candidate.id}
               candidate={candidate}
-              maxVotes={maxVotes}
+              totalCategoryVotes={totalCategoryVotes}
               isVotingOpen={isVotingOpen}
               onVoteClick={(c) => setSelectedCandidate(c)}
             />

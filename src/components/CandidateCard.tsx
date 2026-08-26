@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Candidate } from '@/types';
-import { Heart, Sparkles, Trophy, Flame } from 'lucide-react';
+import { Heart, Sparkles, Trophy, PieChart } from 'lucide-react';
 
 interface CandidateCardProps {
   candidate: Candidate;
-  maxVotes: number;
+  totalCategoryVotes: number;
   isVotingOpen: boolean;
   onVoteClick: (candidate: Candidate) => void;
   rank?: number;
@@ -14,12 +14,13 @@ interface CandidateCardProps {
 
 export function CandidateCard({
   candidate,
-  maxVotes,
+  totalCategoryVotes,
   isVotingOpen,
   onVoteClick,
   rank,
 }: CandidateCardProps) {
-  const percentage = maxVotes > 0 ? Math.min(Math.round((candidate.voteCount / maxVotes) * 100), 100) : 0;
+  const percentageNum = totalCategoryVotes > 0 ? (candidate.voteCount / totalCategoryVotes) * 100 : 0;
+  const formattedPercentage = percentageNum.toFixed(1);
 
   return (
     <div className="group relative bg-white rounded-[2rem] overflow-hidden border border-slate-200/90 hover:border-emerald-400 shadow-md hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col justify-between">
@@ -68,25 +69,24 @@ export function CandidateCard({
         </div>
       </div>
 
-      {/* Interactive Footer & Progress */}
+      {/* Interactive Footer & Percentage Progress */}
       <div className="p-4 sm:p-5 space-y-3 bg-white border-t border-slate-100">
-        {/* Animated Realtime Progress Bar */}
+        {/* Realtime Percentage Bar */}
         <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
           <div className="flex justify-between items-center text-xs font-semibold">
-            <span className="text-slate-600 flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-emerald-600" />
-              คะแนนโหวตสะสม
+            <span className="text-slate-600 flex items-center gap-1.5 font-bold">
+              <PieChart className="w-4 h-4 text-emerald-600" />
+              สัดส่วนผลโหวต
             </span>
-            <span className="font-black text-emerald-700 text-sm sm:text-base">
-              {candidate.voteCount.toLocaleString()}{' '}
-              <span className="text-[11px] text-slate-500 font-normal">คะแนน</span>
+            <span className="font-black text-emerald-700 text-sm sm:text-lg font-mono">
+              {formattedPercentage}%
             </span>
           </div>
 
-          <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
             <div
-              className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${percentage}%` }}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${Math.min(percentageNum, 100)}%` }}
             />
           </div>
         </div>

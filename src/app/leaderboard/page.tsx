@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Candidate, Category } from '@/types';
 import { subscribeCandidates } from '@/lib/dataService';
-import { Trophy, Flame, School, GraduationCap } from 'lucide-react';
+import { Trophy, Flame, School, GraduationCap, PieChart } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -20,11 +20,16 @@ export default function LeaderboardPage() {
     .filter((c) => c.category === activeCategory)
     .sort((a, b) => b.voteCount - a.voteCount);
 
+  const totalCategoryVotes = filtered.reduce((acc, curr) => acc + curr.voteCount, 0);
+
   const top1 = filtered[0];
   const top2 = filtered[1];
   const top3 = filtered[2];
 
-  const maxVotes = Math.max(...filtered.map((c) => c.voteCount), 1);
+  const getPercentageString = (voteCount: number) => {
+    if (totalCategoryVotes === 0) return '0.0%';
+    return ((voteCount / totalCategoryVotes) * 100).toFixed(1) + '%';
+  };
 
   return (
     <div className="space-y-8 pb-16">
@@ -38,7 +43,7 @@ export default function LeaderboardPage() {
           ผลคะแนนสด <span className="text-emerald-600">ขวัญใจมหาชน</span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 font-light">
-          อัปเดตคะแนนแบบเรียลไทม์พร้อมอนิเมชันสำหรับเปิดแสดงผลหน้างาน
+          แสดงสัดส่วนคะแนนเป็นเปอร์เซ็นต์ (%) อัปเดตเรียลไทม์สดหน้างาน
         </p>
       </div>
 
@@ -93,8 +98,8 @@ export default function LeaderboardPage() {
                 </span>
                 <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">{top2.name}</h3>
               </div>
-              <div className="w-full bg-slate-100 py-1.5 px-2 rounded-xl text-xs font-black text-slate-800 border border-slate-200">
-                {top2.voteCount.toLocaleString()} คะแนน
+              <div className="w-full bg-slate-100 py-1.5 px-2 rounded-xl text-xs sm:text-sm font-mono font-black text-slate-800 border border-slate-200">
+                {getPercentageString(top2.voteCount)}
               </div>
             </div>
           ) : (
@@ -120,8 +125,8 @@ export default function LeaderboardPage() {
                 </span>
                 <h3 className="font-extrabold text-sm sm:text-xl text-slate-900 line-clamp-1">{top1.name}</h3>
               </div>
-              <div className="w-full bg-amber-400 text-slate-950 py-2 px-3 rounded-xl text-sm sm:text-base font-black shadow-md">
-                {top1.voteCount.toLocaleString()} คะแนน
+              <div className="w-full bg-amber-400 text-slate-950 py-2 px-3 rounded-xl text-sm sm:text-lg font-mono font-black shadow-md">
+                {getPercentageString(top1.voteCount)}
               </div>
             </div>
           )}
@@ -145,8 +150,8 @@ export default function LeaderboardPage() {
                 </span>
                 <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">{top3.name}</h3>
               </div>
-              <div className="w-full bg-slate-100 py-1.5 px-2 rounded-xl text-xs font-black text-slate-800 border border-slate-200">
-                {top3.voteCount.toLocaleString()} คะแนน
+              <div className="w-full bg-slate-100 py-1.5 px-2 rounded-xl text-xs sm:text-sm font-mono font-black text-slate-800 border border-slate-200">
+                {getPercentageString(top3.voteCount)}
               </div>
             </div>
           ) : (
@@ -159,12 +164,12 @@ export default function LeaderboardPage() {
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 max-w-4xl mx-auto space-y-4">
         <h2 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
           <Flame className="w-5 h-5 text-emerald-600" />
-          สรุปอันดับผู้สมัครทั้งหมด (ระดับ {activeCategory === 'junior' ? 'ม.ต้น' : 'ม.ปลาย'})
+          สรุปสัดส่วนผลโหวตทั้งหมด (ระดับ {activeCategory === 'junior' ? 'ม.ต้น' : 'ม.ปลาย'})
         </h2>
 
         <div className="space-y-3">
           {filtered.map((candidate, idx) => {
-            const pct = maxVotes > 0 ? Math.min(Math.round((candidate.voteCount / maxVotes) * 100), 100) : 0;
+            const pctNum = totalCategoryVotes > 0 ? (candidate.voteCount / totalCategoryVotes) * 100 : 0;
             return (
               <div
                 key={candidate.id}
@@ -190,18 +195,21 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
 
-                {/* Progress Bar & Vote count */}
+                {/* Progress Bar & Percentage */}
                 <div className="flex-1 space-y-1">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 font-light">{pct}% ของคะแนนนำ</span>
-                    <span className="font-black text-emerald-700 text-sm">
-                      {candidate.voteCount.toLocaleString()} คะแนน
+                    <span className="text-slate-500 font-medium flex items-center gap-1">
+                      <PieChart className="w-3.5 h-3.5 text-emerald-600" />
+                      สัดส่วนผลโหวต
+                    </span>
+                    <span className="font-mono font-black text-emerald-700 text-base">
+                      {pctNum.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${pct}%` }}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${Math.min(pctNum, 100)}%` }}
                     />
                   </div>
                 </div>

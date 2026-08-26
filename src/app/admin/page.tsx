@@ -508,26 +508,29 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(activeTab === 'junior' ? juniorCandidates : seniorCandidates).map((candidate) => (
-              <div
-                key={candidate.id}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden p-4 flex gap-4 items-center justify-between shadow-sm hover:shadow-md transition-shadow"
-              >
-                <img
-                  src={candidate.photoUrl}
-                  alt={candidate.name}
-                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-                />
+            {(activeTab === 'junior' ? juniorCandidates : seniorCandidates).map((candidate) => {
+              const categoryTotal = (activeTab === 'junior' ? juniorCandidates : seniorCandidates).reduce((acc, curr) => acc + curr.voteCount, 0);
+              const pct = categoryTotal > 0 ? ((candidate.voteCount / categoryTotal) * 100).toFixed(1) : '0.0';
+              return (
+                <div
+                  key={candidate.id}
+                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden p-4 flex gap-4 items-center justify-between shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <img
+                    src={candidate.photoUrl}
+                    alt={candidate.name}
+                    className="w-16 h-16 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                  />
 
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-0.5 rounded-full inline-block mb-1">
-                    หมายเลข {candidate.candidateNumber}
-                  </span>
-                  <h3 className="font-bold text-sm text-slate-900 truncate">{candidate.name}</h3>
-                  <p className="text-xs text-emerald-700 font-bold mt-0.5">
-                    {candidate.voteCount.toLocaleString()} คะแนน
-                  </p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-0.5 rounded-full inline-block mb-1">
+                      หมายเลข {candidate.candidateNumber}
+                    </span>
+                    <h3 className="font-bold text-sm text-slate-900 truncate">{candidate.name}</h3>
+                    <p className="text-xs text-emerald-700 font-extrabold mt-0.5">
+                      {candidate.voteCount.toLocaleString()} คะแนน ({pct}%)
+                    </p>
+                  </div>
 
                 <div className="flex flex-col gap-1.5">
                   <button
@@ -543,11 +546,11 @@ export default function AdminPage() {
                     title="ลบ"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         </div>
       )}
 
