@@ -546,13 +546,14 @@ export default function AdminPage() {
                     title="ลบ"
                   >
                     <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
-        </div>
-      )}
+      </div>
+    )}
 
       {/* --- TAB CONTENT: Student Database --- */}
       {activeTab === 'students' && (
