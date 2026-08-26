@@ -828,12 +828,28 @@ export default function AdminPage() {
             {/* Voting Toggle & End Time */}
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">สถานะเปิด/ปิดรับโหวต</span>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <div>
+                  <span className="text-xs font-extrabold text-slate-900 block">สถานะเปิด/ปิดรับโหวต (Instant Toggle)</span>
+                  <span className="text-[11px] font-light text-slate-500">
+                    {settingsIsOpen ? '🟢 กำลังเปิดรับโหวตอยู่ในขณะนี้' : '🔴 ปิดรับโหวตเรียบร้อยแล้ว'}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
                   <input
                     type="checkbox"
                     checked={settingsIsOpen}
-                    onChange={(e) => setSettingsIsOpen(e.target.checked)}
+                    onChange={async (e) => {
+                      const val = e.target.checked;
+                      setSettingsIsOpen(val);
+                      const updatedFields: Partial<SystemSettings> = { isVotingOpen: val };
+                      if (!val) {
+                        const nowIso = new Date().toISOString();
+                        updatedFields.votingEndTime = nowIso;
+                        setSettingsEndTime(nowIso.slice(0, 16));
+                      }
+                      await updateSystemSettings(updatedFields);
+                      setSettingsNotice(val ? '🟢 เปิดรับโหวตเรียบร้อยแล้ว (อัปเดตแบบเรียลไทม์สด)' : '🔴 ปิดรับโหวตเรียบร้อยแล้ว (อัปเดตแบบเรียลไทม์สด)');
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -866,7 +882,12 @@ export default function AdminPage() {
                   <input
                     type="checkbox"
                     checked={settingsRequireGps}
-                    onChange={(e) => setSettingsRequireGps(e.target.checked)}
+                    onChange={async (e) => {
+                      const val = e.target.checked;
+                      setSettingsRequireGps(val);
+                      await updateSystemSettings({ requireGpsCheck: val });
+                      setSettingsNotice(val ? '📍 เปิดการตรวจเช็คพิกัด GPS เรียบร้อยแล้ว' : '🟢 ปิดการตรวจเช็คพิกัด GPS เรียบร้อยแล้ว');
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:translate-x-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
