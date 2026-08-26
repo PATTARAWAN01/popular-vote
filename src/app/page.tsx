@@ -14,11 +14,11 @@ export default function HomePage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>('junior');
 
-  // Location check state
-  const [isLocationVerified, setIsLocationVerified] = useState<boolean>(false);
+  // Location check state (Default true so voting works instantly without GPS check)
+  const [isLocationVerified, setIsLocationVerified] = useState<boolean>(true);
   const [userLat, setUserLat] = useState<number>(0);
   const [userLng, setUserLng] = useState<number>(0);
-  const [distanceMeters, setDistanceMeters] = useState<number>(999999);
+  const [distanceMeters, setDistanceMeters] = useState<number>(0);
 
   // Selected candidate for voting modal
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -30,6 +30,9 @@ export default function HomePage() {
 
     const unsubSettings = subscribeSettings((data) => {
       setSettings(data);
+      if (data && data.requireGpsCheck === false) {
+        setIsLocationVerified(true);
+      }
     });
 
     return () => {
@@ -62,7 +65,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-emerald-50 text-xs sm:text-base font-light leading-relaxed">
-            เลือกโหวตผู้สมัครขวัญใจมหาชนในระดับ <strong>ม.ต้น</strong> และ <strong>ม.ปลาย</strong> (สามารถโหวตได้ระดับละ 1 ครั้ง ร่วมเช็คอินตำแหน่งในระยะ 40 เมตร)
+            เลือกโหวตผู้สมัครขวัญใจมหาชนในระดับ <strong>ม.ต้น</strong> และ <strong>ม.ปลาย</strong> (สามารถโหวตได้ระดับละ 1 ครั้ง)
           </p>
         </div>
       </div>
@@ -75,13 +78,13 @@ export default function HomePage() {
         />
       )}
 
-      {/* Location GPS Check Card */}
-      {settings && (
+      {/* Location GPS Check Card (Only rendered when Admin explicitly turns ON requireGpsCheck) */}
+      {settings && settings.requireGpsCheck && (
         <LocationCheckCard
           targetLat={settings.targetLat}
           targetLng={settings.targetLng}
           radiusMeters={settings.radiusMeters || 100}
-          requireGpsCheck={settings.requireGpsCheck ?? true}
+          requireGpsCheck={settings.requireGpsCheck}
           onLocationVerified={(verified, lat, lng, dist) => {
             setIsLocationVerified(verified);
             setUserLat(lat);
